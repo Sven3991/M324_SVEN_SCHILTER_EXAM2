@@ -1,0 +1,52 @@
+name: AI Custom Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-custom-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pull image
+        run: docker pull sven3991/ai-custom-review:latest
+
+      - name: Get diff
+        shell: bash
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > diff.txt
+
+      - name: Run container
+        id: review
+        shell: bash
+        run: |
+          OUTPUT=$(docker run --rm -v "${{ github.workspace }}/diff.txt:/app/diff.txt" sven3991/ai-custom-review:latest)
+          echo "review<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$OUTPUT" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        env:
+          REVIEW_OUTPUT: ${{ steps.review.outputs.review }}
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `# AI Custom Review
+
+              ${process.env.REVIEW_OUTPUT}`
+            })
