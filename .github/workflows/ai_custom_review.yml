@@ -1,0 +1,16 @@
+name: AI Custom Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-custom-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Pull Docker image
+        run: docker pull sven3991/ai-custom-review:latest
+
+      - name: Run Docker container
+        run: docker run --rm sven3991/ai-custom-review:latest
